@@ -6,6 +6,7 @@ namespace absyn {
 void AbsynTree::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
                            err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
+
 }
 
 type::Ty *SimpleVar::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
