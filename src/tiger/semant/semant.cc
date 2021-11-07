@@ -55,14 +55,16 @@ type::Ty *SubscriptVar::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
   auto q = var_->SemAnalyze(venv, tenv, labelcount, errormsg);
   if (!q || typeid(*q) != typeid(type::ArrayTy)) {
     errormsg->Error(var_->pos_, "array type required");
+    return type::IntTy::Instance();
   }
   auto p = subscript_->SemAnalyze(venv, tenv, labelcount, errormsg);
   if (!p || !p->IsSameType(type::IntTy::Instance())) {
     errormsg->Error(subscript_->pos_, "number expected here");
+    return type::IntTy::Instance();
   }
 
   auto arr = static_cast<type::ArrayTy *>(q);
-  return arr->ty_;
+  return arr->ty_->ActualTy();
 }
 
 type::Ty *VarExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
@@ -116,12 +118,14 @@ type::Ty *CallExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     params.pop_front();
   }
 
-  if(!actual.empty()){
-    errormsg->Error(this->pos_, "too many params in function %s", this->func_->Name().data());
+  if (!actual.empty()) {
+    errormsg->Error(this->pos_, "too many params in function %s",
+                    this->func_->Name().data());
     return type::IntTy::Instance();
   }
-  if(!params.empty()){
-    errormsg->Error(this->pos_, "too little params in function %s", this->func_->Name().data());
+  if (!params.empty()) {
+    errormsg->Error(this->pos_, "too little params in function %s",
+                    this->func_->Name().data());
     return type::IntTy::Instance();
   }
 
@@ -131,8 +135,16 @@ type::Ty *CallExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
 type::Ty *OpExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
                             int labelcount, err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
-  auto l = left_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
-  auto r = right_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
+  auto l = left_->SemAnalyze(venv, tenv, labelcount, errormsg);
+  auto r = right_->SemAnalyze(venv, tenv, labelcount, errormsg);
+
+  if(!l || !r){
+    errormsg->Error(left_->pos_, "wrong ops");
+    return type::IntTy::Instance();
+  }
+
+  l = l->ActualTy();
+  r = r->ActualTy();
 
   if (this->oper_ == absyn::PLUS_OP || this->oper_ == absyn::MINUS_OP ||
       this->oper_ == absyn::TIMES_OP || this->oper_ == absyn::DIVIDE_OP) {
@@ -146,7 +158,6 @@ type::Ty *OpExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
   } else {
     if (!l->IsSameType(r)) {
       errormsg->Error(this->pos_, "same type required");
-      return type::IntTy::Instance();
     }
     return type::IntTy::Instance();
   }
@@ -231,13 +242,20 @@ type::Ty *AssignExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
       return type::IntTy::Instance();
     }
   }
-  auto r = exp_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
-  auto l = var_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
-  if (l) {
-    if (typeid(*l) != typeid(*r)) {
-      errormsg->Error(this->pos_, "unmatched assign exp");
-    }
+  auto r = exp_->SemAnalyze(venv, tenv, labelcount, errormsg);
+  auto l = var_->SemAnalyze(venv, tenv, labelcount, errormsg);
+
+  if (!l || !r) {
+    errormsg->Error(this->pos_, "assign meets undef var");
+    return type::IntTy::Instance();
   }
+
+  l = l->ActualTy();
+  r = r->ActualTy();
+  if (!l->IsSameType(r)) {
+    errormsg->Error(this->pos_, "unmatched assign exp");
+  }
+
   return type::VoidTy::Instance();
 }
 
@@ -375,11 +393,11 @@ void FunctionDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
                              int labelcount, err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
   auto funcList = functions_->GetList();
-  while(!funcList.empty()){
+  while (!funcList.empty()) {
     auto fr = funcList.front();
     funcList.pop_front();
-    for(auto &s: funcList){
-      if(s->name_->Name() == fr->name_->Name()){
+    for (auto &s : funcList) {
+      if (s->name_->Name() == fr->name_->Name()) {
         errormsg->Error(this->pos_, "two functions have the same name");
       }
     }
@@ -436,7 +454,7 @@ void VarDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv, int labelcount,
   /* TODO: Put your lab4 code here */
   auto init_ty = init_->SemAnalyze(venv, tenv, labelcount, errormsg);
 
-  if(init_ty == nullptr){
+  if (init_ty == nullptr) {
     errormsg->Error(init_->pos_, "init ty is nullptr");
     return;
   }
@@ -444,18 +462,20 @@ void VarDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv, int labelcount,
   if (this->typ_ != nullptr) {
     auto ty = tenv->Look(this->typ_);
     if (ty) {
+      ty = ty->ActualTy();
       if (!ty->IsSameType(init_ty)) {
         errormsg->Error(init_->pos_, "type mismatch");
       }
-      auto s = new env::VarEntry(ty->ActualTy());
+      auto s = new env::VarEntry(ty);
       venv->Enter(this->var_, s);
     } else {
       errormsg->Error(this->pos_, "illegal var type");
     }
   } else {
     init_ty = init_ty->ActualTy();
-    if(typeid(*(init_ty)) == typeid(type::NilTy)){
-      errormsg->Error(this->pos_, "init should not be nil without type specified");
+    if (typeid(*(init_ty)) == typeid(type::NilTy)) {
+      errormsg->Error(this->pos_,
+                      "init should not be nil without type specified");
     }
     auto s = new env::VarEntry(init_ty);
     venv->Enter(this->var_, s);
@@ -466,11 +486,11 @@ void TypeDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv, int labelcount,
                          err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
   auto q = this->types_->GetList();
-  while(!q.empty()){
+  while (!q.empty()) {
     auto fr = q.front();
     q.pop_front();
-    for(auto &s: q){
-      if(s->name_->Name() == fr->name_->Name()){
+    for (auto &s : q) {
+      if (s->name_->Name() == fr->name_->Name()) {
         errormsg->Error(this->pos_, "two types have the same name");
       }
     }
@@ -570,7 +590,7 @@ type::Ty *ArrayTy::SemAnalyze(env::TEnvPtr tenv,
     return new type::ArrayTy(t->ActualTy());
   }
   errormsg->Error(this->pos_, "undef array type");
-  return new type::ArrayTy(type::IntTy::Instance());
+  return (type::IntTy::Instance());
 }
 } // namespace absyn
 
