@@ -37,6 +37,9 @@ public:
 class ProgTr {
 public:
   // TODO: Put your lab5 code here */
+  ProgTr() = delete;
+  explicit ProgTr(std::unique_ptr<absyn::AbsynTree> absynTree, std::unique_ptr<err::ErrorMsg> errorMsg):
+    absyn_tree_(std::move(absynTree)), errormsg_(std::move(errorMsg)){}
 
   /**
    * Translate IR tree
