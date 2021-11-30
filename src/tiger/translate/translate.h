@@ -37,6 +37,8 @@ public:
 class ProgTr {
 public:
   /* TODO: Put your lab5 code here */
+  ProgTr(std::unique_ptr<absyn::AbsynTree> w,
+         std::unique_ptr<err::ErrorMsg> q) {}
   /**
    * Translate IR tree
    */
