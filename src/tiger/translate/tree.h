@@ -289,6 +289,8 @@ private:
 RelOp NotRel(RelOp);  // a op b == not(a NotRel(op) b)
 RelOp Commute(RelOp); // a op b == b Commute(op) a
 
+MemExp *getMemByBaseAndIndex(Exp *base, int index);
+
 } // namespace tree
 
 #endif // TIGER_TRANSLATE_TREE_H_

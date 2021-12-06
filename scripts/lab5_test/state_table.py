@@ -49,8 +49,7 @@ class StateTable(object):
             string_address = self._string_address + index * 8
             self._mem_table[string_address] = string_table[label]
 
-        
-    
+
     def store_reg(self, reg, val):
         if reg.startswith('%'):
             # Machine Registers

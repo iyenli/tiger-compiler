@@ -28,6 +28,7 @@ public:
   AssemInstr() = delete;
   AssemInstr(nullptr_t) = delete;
   explicit AssemInstr(assem::InstrList *instr_list) : instr_list_(instr_list) {}
+  void emit(assem::Instr *instr);
 
   void Print(FILE *out, temp::Map *map) const;
 
@@ -47,12 +48,24 @@ public:
     return std::move(assem_instr_);
   }
 
+  void saveCalleeSavedRegs();
+
+  void restoreCalleeSavedRegs();
+
 private:
   frame::Frame *frame_;
   std::string fs_; // Frame size label_
   std::unique_ptr<canon::Traces> traces_;
   std::unique_ptr<AssemInstr> assem_instr_;
 };
+
+static temp::Temp *callee_saved_rbx = nullptr;
+static temp::Temp *callee_saved_rbp = nullptr;
+static temp::Temp *callee_saved_r12 = nullptr;
+static temp::Temp *callee_saved_r13 = nullptr;
+static temp::Temp *callee_saved_r14 = nullptr;
+static temp::Temp *callee_saved_r15 = nullptr;
+
 
 } // namespace cg
 #endif
