@@ -360,7 +360,7 @@ Access *X64Frame::allocLocal(bool escape) {
 
 // not suit in fact: Not init frame completely!
 X64Frame::X64Frame(temp::Label *label, std::list<bool> &list) : Frame(label) {
-  this->offset = -8;
+  this->offset = -8; // depends on implementation
 }
 
 Frame *X64Frame::newFrame(temp::Label *name, std::list<bool> &list) {
@@ -374,7 +374,7 @@ Frame *X64Frame::newFrame(temp::Label *name, std::list<bool> &list) {
 
     // view shift
     auto arg_reg = X64Frame::regManager.ARG_nth(num);
-    if (arg_reg == nullptr) { // reg == nullptr
+    if (arg_reg == nullptr) { // in frame args
       f->viewShiftOPs.push_back(new tree::MoveStm(
           local->toExp(
               new tree::TempExp(frame::X64Frame::regManager.FramePointer())),

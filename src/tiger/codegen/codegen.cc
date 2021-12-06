@@ -21,50 +21,45 @@ void CodeGen::saveCalleeSavedRegs() {
   callee_saved_rbp = temp::TempFactory::NewTemp();
   callee_saved_rbx = temp::TempFactory::NewTemp();
 
-  assem_instr_->emit(new assem::MoveInstr(
+  assem_instr_->GetInstrList()->Append(new assem::MoveInstr(
       "movq `s0, `d0", new temp::TempList(callee_saved_rbx),
       new temp::TempList(frame::X64RegManager::RBX())));
-  assem_instr_->emit(new assem::MoveInstr(
+  assem_instr_->GetInstrList()->Append(new assem::MoveInstr(
       "movq `s0, `d0", new temp::TempList(callee_saved_rbp),
       new temp::TempList(frame::X64RegManager::RBP())));
-  assem_instr_->emit(new assem::MoveInstr(
+  assem_instr_->GetInstrList()->Append(new assem::MoveInstr(
       "movq `s0, `d0", new temp::TempList(callee_saved_r12),
       new temp::TempList(frame::X64RegManager::R12())));
-  assem_instr_->emit(new assem::MoveInstr(
+  assem_instr_->GetInstrList()->Append(new assem::MoveInstr(
       "movq `s0, `d0", new temp::TempList(callee_saved_r13),
       new temp::TempList(frame::X64RegManager::R13())));
-  assem_instr_->emit(new assem::MoveInstr(
+  assem_instr_->GetInstrList()->Append(new assem::MoveInstr(
       "movq `s0, `d0", new temp::TempList(callee_saved_r14),
       new temp::TempList(frame::X64RegManager::R14())));
-  assem_instr_->emit(new assem::MoveInstr(
+  assem_instr_->GetInstrList()->Append(new assem::MoveInstr(
       "movq `s0, `d0", new temp::TempList(callee_saved_r15),
       new temp::TempList(frame::X64RegManager::R15())));
 }
 
 void CodeGen::restoreCalleeSavedRegs() {
-  assem_instr_->emit(new assem::MoveInstr(
+  assem_instr_->GetInstrList()->Append(new assem::MoveInstr(
       "movq `s0, `d0", new temp::TempList(frame::X64RegManager::RBX()),
       new temp::TempList(callee_saved_rbx)));
-  assem_instr_->emit(new assem::MoveInstr(
+  assem_instr_->GetInstrList()->Append(new assem::MoveInstr(
       "movq `s0, `d0", new temp::TempList(frame::X64RegManager::RBP()),
       new temp::TempList(callee_saved_rbp)));
-  assem_instr_->emit(new assem::MoveInstr(
+  assem_instr_->GetInstrList()->Append(new assem::MoveInstr(
       "movq `s0, `d0", new temp::TempList(frame::X64RegManager::R12()),
       new temp::TempList(callee_saved_r12)));
-  assem_instr_->emit(new assem::MoveInstr(
+  assem_instr_->GetInstrList()->Append(new assem::MoveInstr(
       "movq `s0, `d0", new temp::TempList(frame::X64RegManager::R13()),
       new temp::TempList(callee_saved_r13)));
-  assem_instr_->emit(new assem::MoveInstr(
+  assem_instr_->GetInstrList()->Append(new assem::MoveInstr(
       "movq `s0, `d0", new temp::TempList(frame::X64RegManager::R14()),
       new temp::TempList(callee_saved_r14)));
-  assem_instr_->emit(new assem::MoveInstr(
+  assem_instr_->GetInstrList()->Append(new assem::MoveInstr(
       "movq `s0, `d0", new temp::TempList(frame::X64RegManager::R15()),
       new temp::TempList(callee_saved_r15)));
-}
-
-void AssemInstr::emit(assem::Instr *instr) {
-  assert(instr_list_);
-  instr_list_->Append(instr);
 }
 
 void CodeGen::Codegen() {
@@ -79,7 +74,8 @@ void CodeGen::Codegen() {
 
   saveCalleeSavedRegs();
   auto ir_list = traces_->GetStmList()->GetList();
-  for (auto &ir : ir_list) {
+
+  for (auto &ir : ir_list) { // code gen one by one
     ir->Munch(*(this->assem_instr_->GetInstrList()), fs_);
   }
   restoreCalleeSavedRegs();

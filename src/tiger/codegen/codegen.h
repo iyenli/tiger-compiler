@@ -28,7 +28,6 @@ public:
   AssemInstr() = delete;
   AssemInstr(nullptr_t) = delete;
   explicit AssemInstr(assem::InstrList *instr_list) : instr_list_(instr_list) {}
-  void emit(assem::Instr *instr);
 
   void Print(FILE *out, temp::Map *map) const;
 
