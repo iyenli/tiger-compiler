@@ -226,4 +226,8 @@ RelOp Commute(RelOp r) {
   }
 }
 
+MemExp *getMemByBaseAndIndex(Exp *base, int index)
+{
+  return new MemExp(new BinopExp(BinOp::PLUS_OP, base, new ConstExp(index)));
+}
 } // namespace tree

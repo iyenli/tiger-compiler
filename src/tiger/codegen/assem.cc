@@ -24,7 +24,7 @@ namespace assem {
  * @param m temp map
  * @return formatted assembly string
  */
-static std::string Format(std::string_view assem, temp::TempList *dst,
+static std::string  Format(std::string_view assem, temp::TempList *dst,
                           temp::TempList *src, Targets *jumps, temp::Map *m) {
   std::string result;
   for (std::string::size_type i = 0; i < assem.size(); i++) {

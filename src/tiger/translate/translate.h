@@ -23,6 +23,7 @@ public:
 
   Access(Level *level, frame::Access *access)
       : level_(level), access_(access) {}
+
   static Access *AllocLocal(Level *level, bool escape);
 };
 
@@ -32,11 +33,16 @@ public:
   Level *parent_;
 
   /* TODO: Put your lab5 code here */
+  Level(frame::Frame *f, Level *p) : frame_(f), parent_(p) {}
+
+  static Level *newLevel(Level *parent, temp::Label *name,
+                         std::list<bool> formals);
 };
 
 class ProgTr {
 public:
-  /* TODO: Put your lab5 code here */ 
+  /* TODO: Put your lab5 code here */
+  ProgTr(std::unique_ptr<absyn::AbsynTree>, std::unique_ptr<err::ErrorMsg>);
   /**
    * Translate IR tree
    */
@@ -50,7 +56,6 @@ public:
     return std::move(errormsg_);
   }
 
-
 private:
   std::unique_ptr<absyn::AbsynTree> absyn_tree_;
   std::unique_ptr<err::ErrorMsg> errormsg_;
@@ -63,6 +68,7 @@ private:
   void FillBaseTEnv();
 };
 
+Level *outermost();
 } // namespace tr
 
 #endif
