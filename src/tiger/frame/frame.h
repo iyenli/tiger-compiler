@@ -111,6 +111,8 @@ public:
   int maxArgs;
 
   virtual Access *allocLocal(bool escape) = 0;
+  
+  std::string GetLabel() const { return name->Name(); }
 };
 
 /**
