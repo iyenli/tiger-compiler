@@ -63,7 +63,7 @@ type::Ty *SubscriptVar::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     return type::IntTy::Instance();
   }
 
-  auto arr = static_cast<type::ArrayTy *>(q->ActualTy());
+  auto arr = static_cast<type::ArrayTy *>(q);
   auto ret = arr->ty_->ActualTy();
   return ret;
 }
@@ -108,7 +108,9 @@ type::Ty *CallExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
   auto actual = this->args_->GetList();
 
   while (!actual.empty() && !params.empty()) {
-    auto curr = actual.front()->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
+    auto curr = actual.front()
+                    ->SemAnalyze(venv, tenv, labelcount, errormsg)
+                    ->ActualTy();
     auto act = params.front()->ActualTy();
     if (!curr || typeid(*curr) != typeid(*act)) {
       errormsg->Error(this->pos_, "para type mismatch");
@@ -139,7 +141,7 @@ type::Ty *OpExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
   auto l = left_->SemAnalyze(venv, tenv, labelcount, errormsg);
   auto r = right_->SemAnalyze(venv, tenv, labelcount, errormsg);
 
-  if(!l || !r){
+  if (!l || !r) {
     errormsg->Error(left_->pos_, "wrong ops");
     return type::IntTy::Instance();
   }
@@ -206,7 +208,8 @@ type::Ty *RecordExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
 
     auto actual1 = t1->ty_->ActualTy();
     auto actual2 = t2_ty->ActualTy();
-    if (!actual2->IsSameType(type::NilTy::Instance()) && typeid(*actual1) != typeid(*actual2)) {
+    if (!actual2->IsSameType(type::NilTy::Instance()) &&
+        typeid(*actual1) != typeid(*actual2)) {
       errormsg->Error(this->pos_, "field type not match");
       return type::IntTy::Instance();
     }
@@ -267,11 +270,14 @@ type::Ty *IfExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
   if (typeid(*test_ty) != typeid(type::IntTy)) {
     errormsg->Error(test_->pos_, "test exp should be int");
   }
-  auto then_ty = then_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
+  auto then_ty =
+      then_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
   if (elsee_) {
-    auto elsee_ty = elsee_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
-    if (typeid(*elsee_ty) != typeid(*then_ty) && !(typeid(*elsee_ty) == typeid(type::NilTy)
-                                                  ^ (typeid(*then_ty) == typeid(type::NilTy)))) {
+    auto elsee_ty =
+        elsee_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
+    if (typeid(*elsee_ty) != typeid(*then_ty) &&
+        !(typeid(*elsee_ty) == typeid(type::NilTy) ^
+          (typeid(*then_ty) == typeid(type::NilTy)))) {
       errormsg->Error(elsee_->pos_, "then exp and else exp type mismatch");
     }
   } else {
@@ -371,13 +377,12 @@ type::Ty *ArrayExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     errormsg->Error(this->size_->pos_, "size of array should be int");
   }
 
-
-  auto cast = static_cast<type::ArrayTy *>(actual_arr->ActualTy())->ty_->ActualTy();
+  auto cast = static_cast<type::ArrayTy *>(actual_arr)->ty_;
   if (!cast) {
     errormsg->Error(this->size_->pos_, "array type undef");
     return type::IntTy::Instance();
   }
-  if (typeid(cast->ActualTy()) != typeid((actual_init->ActualTy()))) {
+  if (!(cast->ActualTy())->IsSameType((actual_init->ActualTy()))) {
     errormsg->Error(this->size_->pos_, "type mismatch");
     return type::IntTy::Instance();
   }
@@ -425,8 +430,10 @@ void FunctionDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
 
   // second scan: for body here
   for (auto &fun : funcList) {
-    auto formals = static_cast<env::FunEntry *>(venv->Look(fun->name_))->formals_;
-    auto res = static_cast<env::FunEntry *>(venv->Look(fun->name_))->result_->ActualTy();
+    auto formals =
+        static_cast<env::FunEntry *>(venv->Look(fun->name_))->formals_;
+    auto res = static_cast<env::FunEntry *>(venv->Look(fun->name_))
+                   ->result_->ActualTy();
 
     venv->BeginScope();
     auto formal_it = formals->GetList().begin();
@@ -434,7 +441,8 @@ void FunctionDec::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     for (; param_it != fun->params_->GetList().end(); formal_it++, param_it++)
       venv->Enter((*param_it)->name_, new env::VarEntry(*formal_it));
 
-    type::Ty *ty = fun->body_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
+    type::Ty *ty =
+        fun->body_->SemAnalyze(venv, tenv, labelcount, errormsg)->ActualTy();
 
     if (res && typeid(*res) != typeid(type::VoidTy)) { // function
       if (typeid(*ty) != typeid(*res)) {
@@ -603,4 +611,4 @@ void ProgSem::SemAnalyze() {
   absyn_tree_->SemAnalyze(venv_.get(), tenv_.get(), errormsg_.get());
 }
 
-} // namespace tr
+} // namespace sem
