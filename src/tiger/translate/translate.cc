@@ -148,14 +148,6 @@ void ProgTr::Translate() {
                                     temp::LabelFactory::NamedLabel("tigermain"),
                                     errormsg_.get());
 
-//  auto stm = frame::procEntryExit1(
-//      l->frame_,
-//      new tree::MoveStm(
-//          new tree::TempExp(frame::X64Frame::regManager.ReturnValue()),
-//          res->exp_->UnEx()));
-//
-//  auto frag = new frame::ProcFrag(stm, l->frame_);
-//  frags->PushBack(frag);
 }
 
 /**
@@ -176,7 +168,7 @@ tree::Exp *staticLink(tr::Level *target, tr::Level *curr) {
 }
 
 Level *Level::newLevel(Level *parent, temp::Label *name,
-                       std::list<bool> &formals) {
+                       std::list<bool> formals) {
   formals.push_front(true); // static link
   auto f = frame::X64Frame::newFrame(name, formals);
   auto level = new Level(f, parent);

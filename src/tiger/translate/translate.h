@@ -36,7 +36,7 @@ public:
   Level(frame::Frame *f, Level *p) : frame_(f), parent_(p) {}
 
   static Level *newLevel(Level *parent, temp::Label *name,
-                         std::list<bool> &formals);
+                         std::list<bool> formals);
 };
 
 class ProgTr {

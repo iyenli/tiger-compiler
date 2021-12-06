@@ -14,57 +14,12 @@ tree::Exp *externalCall(const std::string &s, tree::ExpList *args) {
 }
 
 tree::Stm *procEntryExit1(frame::Frame *frame_, tree::Stm *stm) {
-  int num = 1;
-  tree::Stm *viewShift = nullptr;
+  tree::Stm *viewShift = new tree::ExpStm(new tree::ConstExp(0));
   for (auto &stm_ : frame_->viewShiftOPs) {
-    if (!viewShift) {
-      viewShift =
-          new tree::SeqStm(stm_, new tree::ExpStm(new tree::ConstExp(0)));
-    } else {
-      viewShift = new tree::SeqStm( stm_, viewShift);
-    }
-  }
-  if (!viewShift) {
-    viewShift = new tree::ExpStm(new tree::ConstExp(0));
+    viewShift = new tree::SeqStm(stm_, viewShift);
   }
 
-
-  auto callee_saved = frame::X64Frame::regManager.CalleeSaves()->GetList();
-  tree::Stm *save = nullptr, *restore = nullptr;
-  for (auto &reg : callee_saved) {
-    frame::Access *acc = frame_->allocLocal(false);
-    if (!save) {
-      save = new tree::MoveStm(acc->toExp(new tree::TempExp(
-                                   frame::X64Frame::regManager.FramePointer())),
-                               new tree::TempExp(reg));
-    } else {
-      save = new tree::SeqStm(
-          save,
-          new tree::MoveStm(acc->toExp(new tree::TempExp(
-                                frame::X64Frame::regManager.FramePointer())),
-                            new tree::TempExp(reg)));
-    }
-
-    if (!restore) {
-      restore =
-          new tree::MoveStm(new tree::TempExp(reg),
-                            acc->toExp(new tree::TempExp(
-                                frame::X64Frame::regManager.FramePointer())));
-    } else {
-      restore = new tree::SeqStm(
-          restore,
-          new tree::MoveStm(new tree::TempExp(reg),
-                            acc->toExp(new tree::TempExp(
-                                frame::X64Frame::regManager.FramePointer()))));
-    }
-  }
-
-  auto ret =  new tree::SeqStm(
-      viewShift, new tree::SeqStm(save,
-                                  new tree::SeqStm(stm, restore)));
-  if(frame_->viewShiftOPs.size() > 2){
-    printf("aa");
-  }
+  auto ret = new tree::SeqStm(viewShift, stm);
   return ret;
 }
 
@@ -423,11 +378,11 @@ Frame *X64Frame::newFrame(temp::Label *name, std::list<bool> &list) {
       f->viewShiftOPs.push_back(new tree::MoveStm(
           local->toExp(
               new tree::TempExp(frame::X64Frame::regManager.FramePointer())),
-          new tree::BinopExp(
+          new tree::MemExp(new tree::BinopExp(
               tree::BinOp::PLUS_OP,
               new tree::ConstExp((num - 6) *
                                  frame::X64Frame::regManager.WordSize()),
-              new tree::TempExp(frame::X64Frame::regManager.FramePointer()))));
+              new tree::TempExp(frame::X64Frame::regManager.FramePointer())))));
     } else {
       f->viewShiftOPs.push_back(
           new tree::MoveStm(local->toExp(new tree::TempExp(

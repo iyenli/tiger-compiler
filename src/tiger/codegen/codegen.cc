@@ -180,7 +180,9 @@ void MoveStm::Munch(assem::InstrList &instr_list, std::string_view fs) {
 
       instr_list.Append(new assem::OperInstr(
           "movq (`s0), `d0", new temp::TempList((dst_p)->Munch(instr_list, fs)),
-          new temp::TempList(((tree::MemExp *)src_p)->exp_->Munch(instr_list, fs)), nullptr));
+          new temp::TempList(
+              ((tree::MemExp *)src_p)->exp_->Munch(instr_list, fs)),
+          nullptr));
 
     } else if (typeid(*src_p) == typeid(tree::ConstExp)) { // const to reg
       char tmp[256];
@@ -194,16 +196,14 @@ void MoveStm::Munch(assem::InstrList &instr_list, std::string_view fs) {
       instr_list.Append(new assem::MoveInstr(
           "movq `s0, `d0", new temp::TempList((dst_p)->Munch(instr_list, fs)),
           new temp::TempList(src_p->Munch(instr_list, fs))));
-
     }
   } else if (typeid(*dst_p) == typeid(tree::MemExp)) { // only reg to mem
     auto src_list = new temp::TempList();
     src_list->Append(src_p->Munch(instr_list, fs));
     src_list->Append(((tree::MemExp *)dst_p)->exp_->Munch(instr_list, fs));
 
-    instr_list.Append(new assem::OperInstr(
-        "movq `s0, (`s1)", nullptr,
-        src_list, nullptr));
+    instr_list.Append(
+        new assem::OperInstr("movq `s0, (`s1)", nullptr, src_list, nullptr));
   } else {
     assert(0);
   }
@@ -354,6 +354,17 @@ temp::Temp *CallExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
       std::string(tmp), frame::X64Frame::regManager.CallerSaves(), args,
       nullptr));
 
+  int sum = (int)this->args_->GetList().size();
+  assert(sum >= 1);
+  if(sum > 6) {
+    int overSize = (sum - 6) * frame::X64Frame::regManager.WordSize();
+    char tmp_[256];
+    sprintf(tmp_, "addq $%d, %%rsp", overSize);
+    instr_list.Append(new assem::OperInstr(
+        std::string(tmp_), new temp::TempList(frame::X64RegManager::RSP()),
+        nullptr, nullptr));
+  }
+
   instr_list.Append(new assem::MoveInstr(
       "movq `s0, `d0", new temp::TempList(ret),
       new temp::TempList(frame::X64Frame::regManager.ReturnValue())));
@@ -367,10 +378,10 @@ temp::TempList *ExpList::MunchArgs(assem::InstrList &instr_list,
   auto ret = new temp::TempList();
   auto args = this->exp_list_;
   // cnt of args
-  int num = 1;
+  int num = (int)args.size();
 
   while (!args.empty()) {
-    auto arg = args.front()->Munch(instr_list, fs);
+    auto arg = args.back()->Munch(instr_list, fs);
     auto arg_pos = frame::X64RegManager::ARG_nth(num);
     if (arg_pos) {
       instr_list.Append(new assem::MoveInstr("movq `s0, `d0",
@@ -389,8 +400,8 @@ temp::TempList *ExpList::MunchArgs(assem::InstrList &instr_list,
           "movq `s0, (%rsp)", new temp::TempList(frame::X64RegManager::RSP()),
           new temp::TempList(arg), nullptr));
     }
-    args.pop_front();
-    ++num;
+    args.pop_back();
+    --num;
   }
 
   return ret;
