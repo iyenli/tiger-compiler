@@ -382,10 +382,10 @@ type::Ty *ArrayExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     errormsg->Error(this->size_->pos_, "array type undef");
     return type::IntTy::Instance();
   }
-  if (!(cast->ActualTy())->IsSameType((actual_init->ActualTy()))) {
-    errormsg->Error(this->size_->pos_, "type mismatch");
-    return type::IntTy::Instance();
-  }
+//  if (!(cast->ActualTy())->IsSameType((actual_init->ActualTy()))) {
+//    errormsg->Error(this->size_->pos_, "type mismatch");
+//    return type::IntTy::Instance();
+//  }
 
   auto *ret = new type::ArrayTy(actual_init);
   return ret;

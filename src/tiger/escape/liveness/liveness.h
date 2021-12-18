@@ -77,15 +77,6 @@ temp::TempList *minus_list(temp::TempList *left, temp::TempList *right);
 bool has_changed(temp::TempList *left, temp::TempList *right);
 
 bool contain(temp::TempList *left, temp::TempList *right);
-
-MoveList *intersect_moveList(MoveList *u, MoveList *v);
-
-MoveList *union_moveList(MoveList *u, MoveList *v);
-
-MoveList *difference_moveList(MoveList *u, MoveList *v);
-
-MoveList *contain_moveList(MoveList *u, MoveList *v);
-
 } // namespace live
 
 #endif

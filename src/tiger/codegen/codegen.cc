@@ -90,7 +90,9 @@ void CodeGen::Codegen() {
   restoreCalleeSavedRegs();
 
   // add output active registers
+  auto s = this->assem_instr_->GetInstrList()->GetList().size();
   frame::procEntryExit2(this->assem_instr_->GetInstrList());
+  assert(this->assem_instr_->GetInstrList()->GetList().size() == s + 1);
 }
 
 void AssemInstr::Print(FILE *out, temp::Map *map) const {
@@ -116,9 +118,9 @@ void LabelStm::Munch(assem::InstrList &instr_list, std::string_view fs) {
 
 void JumpStm::Munch(assem::InstrList &instr_list, std::string_view fs) {
   /* TODO: Put your lab5 code here */
-  instr_list.Append(new assem::OperInstr(
-      std::string("jmp ").append(this->exp_->name_->Name()), nullptr, nullptr,
-      new assem::Targets(this->jumps_)));
+  instr_list.Append(new assem::OperInstr(std::string("jmp `j0"), nullptr,
+                                         nullptr,
+                                         new assem::Targets(this->jumps_)));
 }
 
 void CjumpStm::Munch(assem::InstrList &instr_list, std::string_view fs) {
@@ -130,7 +132,7 @@ void CjumpStm::Munch(assem::InstrList &instr_list, std::string_view fs) {
   temp_list->Append(left);
   temp_list->Append(right);
   instr_list.Append(
-      new assem::OperInstr("cmpq, `s1, `s0", nullptr, temp_list, nullptr));
+      new assem::OperInstr("cmpq `s1, `s0", nullptr, temp_list, nullptr));
 
   std::string cjump;
   switch (this->op_) {
@@ -166,13 +168,16 @@ void CjumpStm::Munch(assem::InstrList &instr_list, std::string_view fs) {
     break;
   }
 
-  auto labels = new std::vector<temp::Label *>();
-  labels->push_back(this->true_label_);
-  labels->push_back(this->false_label_);
+  auto *labels = new std::vector<temp::Label *>();
+  labels->push_back(true_label_);
+  labels->push_back(false_label_);
+  auto *targets = new assem::Targets(labels);
 
   instr_list.Append(
-      new assem::OperInstr(cjump.append(this->true_label_->Name()), nullptr,
-                           nullptr, new assem::Targets(labels)));
+      new assem::OperInstr("cmpq `s1, `s0", nullptr, temp_list, nullptr));
+
+  instr_list.Append(
+      new assem::OperInstr(cjump + " `j0", nullptr, nullptr, targets));
 }
 
 void MoveStm::Munch(assem::InstrList &instr_list, std::string_view fs) {
@@ -232,17 +237,22 @@ temp::Temp *BinopExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
     instr_list.Append(new assem::MoveInstr(
         "movq `s0, `d0", new temp::TempList(ret), new temp::TempList(left)));
 
-    instr_list.Append(new assem::OperInstr("addq `s0, `d0",
-                                           new temp::TempList(ret),
-                                           new temp::TempList(right), nullptr));
+    auto src_list = new temp::TempList();
+    src_list->Append(right);
+    src_list->Append(ret);
+    instr_list.Append(new assem::OperInstr(
+        "addq `s0, `d0", new temp::TempList(ret), src_list, nullptr));
     return ret;
   }
   case MINUS_OP: {
     instr_list.Append(new assem::MoveInstr(
         "movq `s0, `d0", new temp::TempList(ret), new temp::TempList(left)));
-    instr_list.Append(new assem::OperInstr("subq `s0, `d0",
-                                           new temp::TempList(ret),
-                                           new temp::TempList(right), nullptr));
+
+    auto src_list = new temp::TempList();
+    src_list->Append(right);
+    src_list->Append(ret);
+    instr_list.Append(new assem::OperInstr(
+        "subq `s0, `d0", new temp::TempList(ret), src_list, nullptr));
     return ret;
   }
   case MUL_OP: {
@@ -254,8 +264,12 @@ temp::Temp *BinopExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
         "movq `s0, `d0", new temp::TempList(frame::X64RegManager::RAX()),
         new temp::TempList(right)));
 
-    instr_list.Append(new assem::OperInstr("imulq `s0", dst_regs,
-                                           new temp::TempList(left), nullptr));
+    auto src_list = new temp::TempList();
+    src_list->Append(left);
+    src_list->Append(frame::X64RegManager::RAX());
+
+    instr_list.Append(
+        new assem::OperInstr("imulq `s0", dst_regs, src_list, nullptr));
     instr_list.Append(
         new assem::MoveInstr("movq `s0, `d0", new temp::TempList(ret),
                              new temp::TempList(frame::X64RegManager::RAX())));
@@ -270,7 +284,6 @@ temp::Temp *BinopExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
     src_regs->Append(right);
     src_regs->Append(frame::X64RegManager::RAX());
     src_regs->Append(frame::X64RegManager::RDX());
-
 
     instr_list.Append(new assem::MoveInstr(
         "movq `s0, `d0", new temp::TempList(frame::X64RegManager::RAX()),
@@ -300,6 +313,7 @@ temp::Temp *MemExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
   /* TODO: Put your lab5 code here */
   auto ret = temp::TempFactory::NewTemp();
   auto val = this->exp_->Munch(instr_list, fs);
+
   instr_list.Append(new assem::OperInstr("movq (`s0), `d0",
                                          new temp::TempList(ret),
                                          new temp::TempList(val), nullptr));
@@ -356,25 +370,39 @@ temp::Temp *ConstExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
 
 temp::Temp *CallExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
   /* TODO: Put your lab5 code here */
-  auto args = this->args_->MunchArgs(instr_list, fs);
   auto func = dynamic_cast<tree::NameExp *>(this->fun_);
   auto ret = temp::TempFactory::NewTemp();
   char tmp[256];
 
-  auto calldef = new temp::TempList();
-  auto callerSaved = frame::X64Frame::regManager.CalleeSaves()->GetList();
-  for (auto &reg : callerSaved) {
-    calldef->Append(reg);
-  } // caller saved reg and
-  calldef->Append(frame::X64Frame::regManager.ReturnValue());
+  auto call_def = new temp::TempList();
+  auto save_tmp = new temp::TempList();
+  auto callerSaved = frame::X64Frame::regManager.CallerSaves()->GetList();
 
+  for (auto &reg : callerSaved) {
+    call_def->Append(reg);
+    save_tmp->Append(temp::TempFactory::NewTemp());
+  } // caller saved reg and
+
+  // save caller saved register first
+  auto call_def_list = call_def->GetList();
+  auto call_def_vec =
+      std::vector<temp::Temp *>(call_def_list.begin(), call_def_list.end());
+  auto tmp_vec = std::vector<temp::Temp *>(save_tmp->GetList().begin(),
+                                           save_tmp->GetList().end());
+  auto size = call_def_list.size();
+  for (auto i = 0; i < size; ++i) {
+    instr_list.Append(
+        new assem::MoveInstr("movq `s0, `d0", new temp::TempList(tmp_vec[i]),
+                             new temp::TempList(call_def_vec[i])));
+  }
+
+  // add callq instructions
+  auto args = this->args_->MunchArgs(instr_list, fs);
   sprintf(tmp, "callq %s", func->name_->Name().data());
   instr_list.Append(
-      new assem::OperInstr(std::string(tmp), calldef, args, nullptr));
+      new assem::OperInstr(std::string(tmp), call_def, args, nullptr));
 
   int sum = (int)this->args_->GetList().size();
-  assert(sum >= 1);
-
   if (sum > 6) {
     int overSize = (sum - 6) * frame::X64Frame::regManager.WordSize();
     // dangerous! what if the number of arg regs improves!?
@@ -385,10 +413,17 @@ temp::Temp *CallExp::Munch(assem::InstrList &instr_list, std::string_view fs) {
         std::string(tmp_), new temp::TempList(frame::X64RegManager::RSP()),
         nullptr, nullptr));
   }
+
   instr_list.Append(new assem::MoveInstr(
       "movq `s0, `d0", new temp::TempList(ret),
       new temp::TempList(frame::X64Frame::regManager.ReturnValue())));
 
+  // restore caller-saved register
+  for (auto i = 0; i < size; ++i) {
+    instr_list.Append(new assem::MoveInstr("movq `s0, `d0",
+                                           new temp::TempList(call_def_vec[i]),
+                                           new temp::TempList(tmp_vec[i])));
+  }
   return ret;
 }
 

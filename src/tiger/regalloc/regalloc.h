@@ -19,28 +19,29 @@ public:
   Result() : coloring_(nullptr), il_(nullptr) {}
   Result(temp::Map *coloring, assem::InstrList *il)
       : coloring_(coloring), il_(il) {}
+
   Result(const Result &result) = delete;
   Result(Result &&result) = delete;
   Result &operator=(const Result &result) = delete;
   Result &operator=(Result &&result) = delete;
-  ~Result();
+
+  ~Result() = default;
 };
 
 class RegAllocator {
   /* TODO: Put your lab6 code here */
 public:
   RegAllocator(frame::Frame *frame_,
-               std::unique_ptr<cg::AssemInstr> assemInstr) {}
+               std::unique_ptr<cg::AssemInstr> assemInstr);
+
+  std::unique_ptr<Result> TransferResult();
 
   void RegAlloc() {}
 
-  std::unique_ptr<Result> TransferResult() {
-    test = 0;
-    return nullptr;
-  }
-
 private:
-  int test;
+  frame::Frame *frame;
+
+  std::unique_ptr<cg::AssemInstr> assemInstr;
 };
 
 } // namespace ra

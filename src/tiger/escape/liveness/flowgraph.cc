@@ -78,4 +78,61 @@ temp::TempList *OperInstr::Use() const {
   /* TODO: Put your lab6 code here */
   return this->src_? this->src_:  new temp::TempList();
 }
+
+void LabelInstr::Replace(temp::Temp *oldt, temp::Temp *newt) {
+}
+
+void MoveInstr::Replace(temp::Temp *oldt, temp::Temp *newt) {
+  if(src_){
+    auto src_n = new temp::TempList();
+    for(auto &temp : src_->GetList()){
+      if(temp==oldt){
+        src_n->Append(newt);
+      }
+      else{
+        src_n->Append(temp);
+      }
+    }
+    src_ = src_n;
+  }
+  if(dst_){
+    auto dst_n = new temp::TempList();
+    for(auto &temp : dst_->GetList()){
+      if(temp==oldt){
+        dst_n->Append(newt);
+      }
+      else{
+        dst_n->Append(temp);
+      }
+    }
+    dst_ = dst_n;
+  }
+}
+
+void OperInstr::Replace(temp::Temp *oldt, temp::Temp *newt) {
+  if(src_){
+    auto src_n = new temp::TempList();
+    for(auto &temp : src_->GetList()){
+      if(temp==oldt){
+        src_n->Append(newt);
+      }
+      else{
+        src_n->Append(temp);
+      }
+    }
+    src_ = src_n;
+  }
+  if(dst_){
+    auto dst_n = new temp::TempList();
+    for(auto &temp : dst_->GetList()){
+      if(temp==oldt){
+        dst_n->Append(newt);
+      }
+      else{
+        dst_n->Append(temp);
+      }
+    }
+    dst_ = dst_n;
+  }
+}
 } // namespace assem

@@ -83,7 +83,7 @@ void ProcFrag::OutputAssem(FILE *out, OutputPhase phase, bool need_ra) const {
     reg_allocator.RegAlloc();
     allocation = reg_allocator.TransferResult();
     il = allocation->il_;
-    color = temp::Map::LayerMap(reg_manager->temp_map_, allocation->coloring_);
+    color = temp::Map::LayerMap(X64Frame::regManager.temp_map_, allocation->coloring_);
   }
 
   TigerLog("-------====Output assembly for %s=====-----\n",
