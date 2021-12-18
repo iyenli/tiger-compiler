@@ -77,4 +77,58 @@ temp::TempList *OperInstr::Use() const {
   /* TODO: Put your lab6 code here */
   return this->src_? this->src_:  new temp::TempList();
 }
+
+void OperInstr::replaceReg(temp::Temp *old_, temp::Temp *new_) {
+  if(src_) {
+    auto new_src = new temp::TempList();
+    for(auto &src_reg: src_->GetList()) {
+      if(src_reg == old_) {
+        new_src->Append(new_);
+      } else{
+        new_src->Append(src_reg);
+      }
+    }
+    src_ = new_src;
+  }
+
+  if(dst_) {
+    auto new_dst = new temp::TempList();
+    for(auto &dst_reg: dst_->GetList()) {
+      if(dst_reg == old_) {
+        new_dst->Append(new_);
+      } else{
+        new_dst->Append(dst_reg);
+      }
+    }
+    dst_ = new_dst;
+  }
+}
+
+void LabelInstr::replaceReg(temp::Temp *old_, temp::Temp *new_) {}
+
+void MoveInstr::replaceReg(temp::Temp *old_, temp::Temp *new_) {
+  if(src_) {
+    auto new_src = new temp::TempList();
+    for(auto &src_reg: src_->GetList()) {
+      if(src_reg == old_) {
+        new_src->Append(new_);
+      } else{
+        new_src->Append(src_reg);
+      }
+    }
+    src_ = new_src;
+  }
+
+  if(dst_) {
+    auto new_dst = new temp::TempList();
+    for(auto &dst_reg: dst_->GetList()) {
+      if(dst_reg == old_) {
+        new_dst->Append(new_);
+      } else{
+        new_dst->Append(dst_reg);
+      }
+    }
+    dst_ = new_dst;
+  }
+}
 } // namespace assem

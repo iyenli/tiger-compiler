@@ -99,7 +99,7 @@ void Color::addEdge(live::INodePtr u, live::INodePtr v) {
       (*(degree->Look(u)))++;
       live_graph->interf_graph->AddEdge(u, v);
     }
-    if(colors->Look(v) != nullptr){
+    if (colors->Look(v) != nullptr) {
       (*(degree->Look(v)))++;
       live_graph->interf_graph->AddEdge(v, u);
     }
@@ -174,7 +174,9 @@ void Color::enableMoves(live::INodeListPtr nodes) {
     for (auto &move : moves) {
       if (activeMoves->Contain(move.first, move.second)) {
         activeMoves->Delete(move.first, move.second);
-        worklistMoves->Append(move.first, move.second);
+        if (!worklistMoves->Contain(move.first, move.second)) {
+          worklistMoves->Append(move.first, move.second);
+        }
       }
     }
   }
@@ -199,10 +201,14 @@ void Color::coalesce() {
   worklistMoves->Delete(move.first, move.second);
 
   if (u == v) {
-    coalescedMoves->Append(x, y);
+    if (!coalescedMoves->Contain(x, y)) {
+      coalescedMoves->Append(x, y);
+    }
     addWorkList(u);
   } else if (colors->Look(v) || u->Succ()->Contain(v)) { // ??
-    constrainedMoves->Append(x, y);
+    if (!constrainedMoves->Contain(x, y)) {
+      constrainedMoves->Append(x, y);
+    }
     addWorkList(u);
     addWorkList(v);
   } else if (colors->Look(u)) {
@@ -216,17 +222,23 @@ void Color::coalesce() {
       }
     }
     if (flag) {
-      coalescedMoves->Append(x, y);
+      if (!coalescedMoves->Contain(x, y)) {
+        coalescedMoves->Append(x, y);
+      }
       combine(u, v);
       addWorkList(u);
     }
   } else if (!colors->Look(u) &&
              conservative(adjacent(u)->Union(adjacent(v)))) {
-    coalescedMoves->Append(x, y);
+    if (!coalescedMoves->Contain(x, y)) {
+      coalescedMoves->Append(x, y);
+    }
     combine(u, v);
     addWorkList(u);
   } else {
-    activeMoves->Append(x, y);
+    if (!activeMoves->Contain(x, y)) {
+      activeMoves->Append(x, y);
+    }
   }
 }
 
@@ -330,7 +342,7 @@ void Color::selectSpill() {
                       noSpilledNodes)) { // thank you g-boy!
       continue;
     }
-    if(frame::X64Frame::regManager.IsMachineRegister(node->NodeInfo())) {
+    if (frame::X64Frame::regManager.IsMachineRegister(node->NodeInfo())) {
       continue;
     }
     if (*degree->Look(node) > max_degree) {
@@ -429,43 +441,45 @@ void Color::reWriteProgram() {
       // Get src and dst temps
       if (typeid(*instr) == typeid(assem::LabelInstr)) {
         continue;
-      } else if (typeid(*instr) == typeid(assem::MoveInstr)) {
-        src = ((assem::MoveInstr *)(instr))->src_;
-        dst = ((assem::MoveInstr *)(instr))->dst_;
-      } else if (typeid(*instr) == typeid(assem::OperInstr)) {
-        src = ((assem::OperInstr *)(instr))->src_;
-        dst = ((assem::OperInstr *)(instr))->dst_;
       } else {
-        assert(0);
+        src = instr->Use();
+        dst = instr->Def();
       }
 
       char str[256];
-      if (src != nullptr && live::contain(new temp::TempList(spilled), src)) {
+      bool src_contain = src && live::contain(new temp::TempList(spilled), src);
+      bool dst_contain = dst && live::contain(new temp::TempList(spilled), dst);
+
+      if (src_contain && dst_contain) {
         auto intermediate = temp::TempFactory::NewTemp();
         noSpilledNodes->Append(intermediate);
+        instr->replaceReg(spilled, intermediate);
 
-        auto src_list = src->GetList();
-        if (typeid(*instr) == typeid(assem::MoveInstr)) {
-          ((assem::MoveInstr *)(instr))->src_ = new temp::TempList();
-          for (auto &s : src_list) {
-            if (s == spilled) {
-              ((assem::MoveInstr *)(instr))->src_->Append(intermediate);
-            } else {
-              ((assem::MoveInstr *)(instr))->src_->Append(s);
-            }
-          }
-        } else if (typeid(*instr) == typeid(assem::OperInstr)) {
-          ((assem::OperInstr *)(instr))->src_ = new temp::TempList();
-          for (auto &s : src_list) {
-            if (s == spilled) {
-              ((assem::OperInstr *)(instr))->src_->Append(intermediate);
-            } else {
-              ((assem::OperInstr *)(instr))->src_->Append(s);
-            }
-          }
-        }
+        sprintf(str, "movq (%s_framesize-%d)(`s0), `d0",
+                f->name->Name().c_str(), -f->offset);
+        auto newInstr1 = new assem::OperInstr(
+            std::string(str), new temp::TempList(intermediate),
+            new temp::TempList(frame::X64Frame::regManager.StackPointer()),
+            nullptr);
+        memset(str, '\0', 256);
+        sprintf(str, "movq `s0, (%s_framesize-%d)(`s1)",
+                f->name->Name().c_str(), -f->offset);
+        auto src_temps = new temp::TempList();
+        src_temps->Append(intermediate);
+        src_temps->Append(frame::X64Frame::regManager.StackPointer());
+        auto newInstr2 =
+            new assem::OperInstr(std::string(str), nullptr, src_temps, nullptr);
+        instructions.insert(iter, newInstr1);
+        ++iter;
+        iter = instructions.insert(iter, newInstr2);
 
-        // add instruction!!
+      } else if (src_contain) {
+
+        auto intermediate = temp::TempFactory::NewTemp();
+        noSpilledNodes->Append(intermediate);
+        instr->replaceReg(spilled, intermediate);
+
+        // add instruction
         sprintf(str, "movq (%s_framesize-%d)(`s0), `d0",
                 f->name->Name().c_str(), -f->offset);
 
@@ -475,42 +489,21 @@ void Color::reWriteProgram() {
             nullptr);
 
         instructions.insert(iter, newInstr);
-
-      } else if (dst != nullptr &&
-                 live::contain( new temp::TempList(spilled), dst)) {
+      } else if (dst_contain) {
 
         auto intermediate = temp::TempFactory::NewTemp();
         noSpilledNodes->Append(intermediate);
         // replace equals to spilled node!
-        auto dst_list = dst->GetList();
-        if (typeid(*instr) == typeid(assem::MoveInstr)) {
-          ((assem::MoveInstr *)(instr))->dst_ = new temp::TempList();
-          for (auto &s : dst_list) {
-            if (s == spilled) {
-              ((assem::MoveInstr *)(instr))->dst_->Append(intermediate);
-            } else {
-              ((assem::MoveInstr *)(instr))->dst_->Append(s);
-            }
-          }
-        } else if (typeid(*instr) == typeid(assem::OperInstr)) {
-          ((assem::OperInstr *)(instr))->dst_ = new temp::TempList();
-          for (auto &s : dst_list) {
-            if (s == spilled) {
-              ((assem::OperInstr *)(instr))->dst_->Append(intermediate);
-            } else {
-              ((assem::OperInstr *)(instr))->dst_->Append(s);
-            }
-          }
-        }
+        instr->replaceReg(spilled, intermediate);
 
         // add instruction!!
-        sprintf(str, "movq `s0, (%s_framesize-%d)(`d0)",
+        sprintf(str, "movq `s0, (%s_framesize-%d)(`s1)",
                 f->name->Name().c_str(), -f->offset);
-        auto newInstr = new assem::OperInstr(
-            std::string(str),
-            new temp::TempList(frame::X64Frame::regManager.StackPointer()),
-            new temp::TempList(intermediate),
-            nullptr);
+        auto src_temps = new temp::TempList();
+        src_temps->Append(intermediate);
+        src_temps->Append(frame::X64Frame::regManager.StackPointer());
+        auto newInstr =
+            new assem::OperInstr(std::string(str), nullptr, src_temps, nullptr);
 
         ++iter;
         iter = instructions.insert(iter, newInstr);
