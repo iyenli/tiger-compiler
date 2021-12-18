@@ -63,7 +63,6 @@ void LiveGraphFactory::LiveMap() {
       auto in = union_list(node->NodeInfo()->Use(),
                            minus_list(out, node->NodeInfo()->Def()));
 
-
       in_->Set(node, in);
       out_->Set(node, out);
 
@@ -135,7 +134,7 @@ void LiveGraphFactory::InterfGraph() {
       for (auto &def : defs) {
         for (auto &use : uses) {
           if (def != frame::X64RegManager::RSP() &&
-              use != frame::X64RegManager::RSP()) {
+              use != frame::X64RegManager::RSP() && def != use) {
             if (!live_graph_.moves->Contain(temp_node_map_->Look(use),
                                             temp_node_map_->Look(def))) {
               live_graph_.moves->Append(temp_node_map_->Look(use),
@@ -144,8 +143,6 @@ void LiveGraphFactory::InterfGraph() {
           }
         }
       }
-
-
     } else {
 //      out_live = union_list(out_live, instr->Def());
       for (auto &def : defs) {
@@ -164,7 +161,7 @@ void LiveGraphFactory::InterfGraph() {
 }
 
 void LiveGraphFactory::addToLiveNode(temp::Temp *out) {
-  if (out == frame::X64RegManager::RSP()) {
+  if (frame::X64Frame::regManager.IsMachineRegister(out)) {
     return; // Common reg only
   }
   if (temp_node_map_->Look(out) == nullptr) {
@@ -214,13 +211,13 @@ temp::TempList *minus_list(temp::TempList *left, temp::TempList *right) {
 
   for (auto &t : left_list) {
     bool toAdd = true;
-    for(auto &s: right_list) {
-      if(t == s) {
+    for (auto &s : right_list) {
+      if (t == s) {
         toAdd = false;
         break;
       }
     }
-    if(toAdd) {
+    if (toAdd) {
       ret->Append(t);
     }
   }

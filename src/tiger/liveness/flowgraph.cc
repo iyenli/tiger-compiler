@@ -9,22 +9,21 @@ void FlowGraphFactory::AssemFlowGraph() {
 
   for (const auto &instruction : instr_list) {
     auto node = flowgraph_->NewNode(instruction);
+    if (typeid(*instruction) == typeid(assem::LabelInstr)) {
+      auto cast = dynamic_cast<assem::LabelInstr *>(instruction);
+      label_map_->Enter(cast->label_, node);
+    }
 
     if (past != nullptr) { // just jmp can't link, call and ret can't
       auto info = past->NodeInfo(); // occurs in same frag
       if (typeid(*info) == typeid(assem::OperInstr)) {
         auto cast = dynamic_cast<assem::OperInstr *>(info);
-        if (cast->assem_ != std::string("jmp")) {
+        if (cast->assem_.find("jmp") == std::string::npos) {
           flowgraph_->AddEdge(past, node);
         }
       } else {
         flowgraph_->AddEdge(past, node);
       }
-    }
-
-    if (typeid(*instruction) == typeid(assem::LabelInstr)) {
-      auto cast = dynamic_cast<assem::LabelInstr *>(instruction);
-      label_map_->Enter(cast->label_, node);
     }
     // update past!
     past = node;

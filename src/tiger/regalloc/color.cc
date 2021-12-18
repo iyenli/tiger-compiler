@@ -154,7 +154,7 @@ void Color::simplify() {
 
 void Color::decrementDegree(live::INodePtr pNode) {
   (*degree->Look(pNode))--;
-  if (*degree->Look(pNode) == K) {
+  if (*degree->Look(pNode) == K - 1) {
     auto para = new live::INodeList();
     para->Append(pNode);
     enableMoves(para->Union(adjacent(pNode)));
