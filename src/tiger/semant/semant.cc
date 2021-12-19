@@ -220,7 +220,7 @@ type::Ty *RecordExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     cl.pop_front();
     l.pop_front();
   }
-  return new type::RecordTy(s);
+  return ty;
 }
 
 type::Ty *SeqExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
@@ -382,10 +382,10 @@ type::Ty *ArrayExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     errormsg->Error(this->size_->pos_, "array type undef");
     return type::IntTy::Instance();
   }
-//  if (!(cast->ActualTy())->IsSameType((actual_init->ActualTy()))) {
-//    errormsg->Error(this->size_->pos_, "type mismatch");
-//    return type::IntTy::Instance();
-//  }
+  if (!(cast)->IsSameType((actual_init))) {
+    errormsg->Error(this->size_->pos_, "type mismatch");
+    return type::IntTy::Instance();
+  }
 
   auto *ret = new type::ArrayTy(actual_init);
   return ret;

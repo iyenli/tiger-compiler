@@ -10,15 +10,14 @@ Color::Color(frame::Frame *f, assem::InstrList *ir)
     : simplifyWorklist(new live::INodeList()),
       freezeWorklist(new live::INodeList()),
       spillWorklist(new live::INodeList()), spilledNodes(new live::INodeList()),
-      coalescedNodes(new live::INodeList()), initial(new live::INodeList()),
+      coalescedNodes(new live::INodeList()),
       coloredNodes(new live::INodeList()), selectStack(new live::INodeList()),
       coalescedMoves(new live::MoveList()), instrList(ir), f(f),
       degree(new tab::Table<live::INode, int>()),
       colors(new tab::Table<live::INode, std::string>()),
       moveLists(new tab::Table<live::INode, live::MoveList>()),
-      alias(new tab::Table<live::INode, live::INode>()),
-      preColorNodes(new live::INodeList()), live_graph(nullptr),
-      noSpilledNodes(new temp::TempList()), mapp(nullptr),
+      alias(new tab::Table<live::INode, live::INode>()), live_graph(nullptr),
+      noSpilledNodes(new temp::TempList()),
       constrainedMoves(new live::MoveList()), frozenMoves(new live::MoveList()),
       worklistMoves(new live::MoveList()), activeMoves(new live::MoveList()) {}
 
@@ -67,7 +66,6 @@ void Color::livenessAnalysis() {
   worklistMoves = tmp.moves;
 
   live_graph = new live::LiveGraph(tmp.interf_graph, worklistMoves);
-  mapp = live_graph_->GetTempNodeMap();
 }
 
 // most our work done on liveness analysis, only left moveList and degree table
@@ -313,7 +311,7 @@ void Color::freezeMoves(live::INodePtr u) {
     auto x = move.first;
     auto y = move.second;
 
-    live::INodePtr v = nullptr;
+    live::INodePtr v;
     if (getAlias(y) == getAlias(u)) {
       v = getAlias(x);
     } else {
@@ -339,12 +337,12 @@ void Color::selectSpill() {
   live::INodePtr toSelect = nullptr;
   for (auto node : nodes) {
     if (live::contain(new temp::TempList(node->NodeInfo()),
-                      noSpilledNodes)) { // thank you g-boy!
+                      noSpilledNodes) ||
+        frame::X64Frame::regManager.IsMachineRegister(
+            node->NodeInfo())) { // thank you g-boy!
       continue;
     }
-    if (frame::X64Frame::regManager.IsMachineRegister(node->NodeInfo())) {
-      continue;
-    }
+
     if (*degree->Look(node) > max_degree) {
       toSelect = node;
       max_degree = *degree->Look(node);
@@ -413,6 +411,7 @@ void Color::assignColors() {
 
 temp::Map *Color::assignRegisters() {
   auto ret = temp::Map::Empty();
+  // we never consider %rsp since the very first step
   ret->Enter(frame::X64RegManager::RSP(), new std::string("%rsp"));
 
   auto nodes = live_graph->interf_graph->Nodes()->GetList();
@@ -521,10 +520,8 @@ void Color::clearToLastTwo() {
   freezeWorklist->Clear();
   spillWorklist->Clear();
   coalescedNodes->Clear();
-  initial->Clear();
   coloredNodes->Clear();
   selectStack->Clear();
-  preColorNodes->Clear();
 
   constrainedMoves = new live::MoveList();
   frozenMoves = new live::MoveList();
@@ -538,7 +535,8 @@ void Color::clearToLastTwo() {
   alias = new tab::Table<live::INode, live::INode>();
 }
 
-assem::InstrList *Color::getInstrList(std::list<assem::Instr *> instructions) {
+assem::InstrList *
+Color::getInstrList(const std::list<assem::Instr *> &instructions) {
   auto new_instructions = new assem::InstrList();
   for (auto &instr : instructions) {
     new_instructions->Append(instr);

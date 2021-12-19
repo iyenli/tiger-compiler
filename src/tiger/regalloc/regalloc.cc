@@ -22,17 +22,16 @@ std::unique_ptr<Result> RegAllocator::TransferResult() {
   for (auto &instr : instr_list->GetList()) {
     if (typeid(*instr) == typeid(assem::MoveInstr)) {
       auto cast = ((assem::MoveInstr *)(instr));
-      if (color_map->Look(cast->src_->GetList().front()) ==
+      assert(cast->src_->GetList().size() == 1);
+      assert(cast->dst_->GetList().size() == 1);
+      if (color_map->Look(cast->src_->GetList().front()) !=
           color_map->Look(cast->dst_->GetList().front())) {
-        cast->assem_ = "# " + cast->assem_;
-      } else {
         new_list->Append(instr);
       }
     } else {
       new_list->Append(instr);
     }
   }
-
   return std::make_unique<Result>(color_map, new_list);
 }
 
@@ -41,6 +40,5 @@ RegAllocator::RegAllocator(frame::Frame *frame_,
   frame = frame_;
   this->assemInstr = std::move(assemInstr);
 }
-
 
 } // namespace ra

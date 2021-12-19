@@ -5,6 +5,7 @@
 #include "tiger/frame/temp.h"
 #include "tiger/liveness/liveness.h"
 #include "tiger/util/graph.h"
+#include <map>
 
 namespace col {
 struct Result {
@@ -53,9 +54,7 @@ private:
   live::INodeList *spilledNodes;
   live::INodeList *coalescedNodes;
   live::INodeList *coloredNodes;
-  live::INodeList *preColorNodes;
   live::INodeList *selectStack;
-  live::INodeList *initial;
 
   live::MoveList *coalescedMoves;
   live::MoveList *constrainedMoves;
@@ -64,8 +63,6 @@ private:
   live::MoveList *activeMoves;
 
   live::LiveGraph *live_graph;
-  // search temp and corresponding node
-  tab::Table<temp::Temp, graph::Node<temp::Temp>> *mapp;
 
   tab::Table<live::INode, int> *degree;
   tab::Table<live::INode, std::string> *colors;
@@ -104,7 +101,7 @@ private:
 
   void clearToLastTwo();
 
-  assem::InstrList *getInstrList(std::list<assem::Instr*>);
+  static assem::InstrList *getInstrList(const std::list<assem::Instr*>&);
 
 };
 } // namespace col
