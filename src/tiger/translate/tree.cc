@@ -165,6 +165,13 @@ void CallExp::Print(FILE *out, int d) const {
   fprintf(out, ")");
 }
 
+void StmList::Print(FILE *out) const {
+  for (auto stm : stm_list_) {
+    stm->Print(out, 0);
+    fprintf(out, "\n");
+  }
+}
+
 RelOp NotRel(RelOp r) {
   switch (r) {
   case EQ_OP:
@@ -219,4 +226,8 @@ RelOp Commute(RelOp r) {
   }
 }
 
+MemExp *getMemByBaseAndIndex(Exp *base, int index)
+{
+  return new MemExp(new BinopExp(BinOp::PLUS_OP, base, new ConstExp(index)));
+}
 } // namespace tree

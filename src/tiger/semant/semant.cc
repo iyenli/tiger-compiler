@@ -63,7 +63,7 @@ type::Ty *SubscriptVar::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     return type::IntTy::Instance();
   }
 
-  auto arr = static_cast<type::ArrayTy *>(q);
+  auto arr = static_cast<type::ArrayTy *>(q->ActualTy());
   auto ret = arr->ty_->ActualTy();
   return ret;
 }
@@ -206,7 +206,7 @@ type::Ty *RecordExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
 
     auto actual1 = t1->ty_->ActualTy();
     auto actual2 = t2_ty->ActualTy();
-    if (typeid(*actual1) != typeid(*actual2)) {
+    if (!actual2->IsSameType(type::NilTy::Instance()) && typeid(*actual1) != typeid(*actual2)) {
       errormsg->Error(this->pos_, "field type not match");
       return type::IntTy::Instance();
     }
@@ -371,12 +371,13 @@ type::Ty *ArrayExp::SemAnalyze(env::VEnvPtr venv, env::TEnvPtr tenv,
     errormsg->Error(this->size_->pos_, "size of array should be int");
   }
 
-  auto cast = static_cast<type::ArrayTy *>(actual_arr)->ty_;
+
+  auto cast = static_cast<type::ArrayTy *>(actual_arr->ActualTy())->ty_->ActualTy();
   if (!cast) {
     errormsg->Error(this->size_->pos_, "array type undef");
     return type::IntTy::Instance();
   }
-  if (!cast->ActualTy()->IsSameType(actual_init)) {
+  if (typeid(cast->ActualTy()) != typeid((actual_init->ActualTy()))) {
     errormsg->Error(this->size_->pos_, "type mismatch");
     return type::IntTy::Instance();
   }
@@ -585,6 +586,7 @@ type::Ty *ArrayTy::SemAnalyze(env::TEnvPtr tenv,
                               err::ErrorMsg *errormsg) const {
   /* TODO: Put your lab4 code here */
   // TODO: What to return when meeting error
+
   auto t = tenv->Look(this->array_);
   if (t) {
     return new type::ArrayTy(t->ActualTy());
