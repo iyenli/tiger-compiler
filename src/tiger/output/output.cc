@@ -31,7 +31,7 @@ namespace frame {
 void ProcFrag::OutputAssem(FILE *out, OutputPhase phase, bool need_ra) const {
   std::unique_ptr<canon::Traces> traces;
   std::unique_ptr<cg::AssemInstr> assem_instr;
-//   std::unique_ptr<ra::Result> allocation;
+  std::unique_ptr<ra::Result> allocation;
 
   // When generating proc fragment, do not output string assembly
   if (phase != Proc)
@@ -63,7 +63,8 @@ void ProcFrag::OutputAssem(FILE *out, OutputPhase phase, bool need_ra) const {
     traces = canon.TransferTraces();
   }
 
-  temp::Map *color = temp::Map::LayerMap(reg_manager->temp_map_, temp::Map::Name());
+  temp::Map *color =
+      temp::Map::LayerMap(reg_manager->temp_map_, temp::Map::Name());
   {
     // Lab 5: code generation
     TigerLog("-------====Code generate=====-----\n");
@@ -75,22 +76,32 @@ void ProcFrag::OutputAssem(FILE *out, OutputPhase phase, bool need_ra) const {
 
   assem::InstrList *il = assem_instr.get()->GetInstrList();
 
-   TigerLog("-------====Output assembly for %s=====-----\n",
-            frame_->name->Name().data());
+  if (need_ra) {
+    // Lab 6: register allocation
+    TigerLog("----====Register allocate====-----\n");
+    ra::RegAllocator reg_allocator(frame_, std::move(assem_instr));
+    reg_allocator.RegAlloc();
+    allocation = reg_allocator.TransferResult();
+    il = allocation->il_;
+    color = temp::Map::LayerMap(X64Frame::regManager.temp_map_, allocation->coloring_);
+  }
 
-   assem::Proc *proc = frame::procEntryExit3(frame_, il);
-  
-   std::string proc_name = frame_->name->Name();
+  TigerLog("-------====Output assembly for %s=====-----\n",
+           frame_->name->Name().data());
 
-   fprintf(out, ".globl %s\n", proc_name.data());
-   fprintf(out, ".type %s, @function\n", proc_name.data());
-   // prologue
-   fprintf(out, "%s", proc->prolog_.data());
-   // body
-   proc->body_->Print(out, color);
-   // epilog_
-   fprintf(out, "%s", proc->epilog_.data());
-   fprintf(out, ".size %s, .-%s\n", proc_name.data(), proc_name.data());
+  assem::Proc *proc = frame::procEntryExit3(frame_, il);
+
+  std::string proc_name = frame_->GetLabel();
+
+  fprintf(out, ".globl %s\n", proc_name.data());
+  fprintf(out, ".type %s, @function\n", proc_name.data());
+  // prologue
+  fprintf(out, "%s", proc->prolog_.data());
+  // body
+  proc->body_->Print(out, color);
+  // epilog_
+  fprintf(out, "%s", proc->epilog_.data());
+  fprintf(out, ".size %s, .-%s\n", proc_name.data(), proc_name.data());
 }
 
 void StringFrag::OutputAssem(FILE *out, OutputPhase phase, bool need_ra) const {

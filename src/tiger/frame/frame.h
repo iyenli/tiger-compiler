@@ -111,6 +111,8 @@ public:
   int maxArgs;
 
   virtual Access *allocLocal(bool escape) = 0;
+  
+  std::string GetLabel() const { return name->Name(); }
 };
 
 /**
@@ -225,6 +227,11 @@ public:
   static temp::Temp *R14();
 
   static temp::Temp *R15();
+
+  static const int K = 15;
+
+public:
+  bool IsMachineRegister(temp::Temp *const &pTemp);
 };
 
 class InFrameAccess : public Access {
@@ -235,6 +242,7 @@ public:
   /* TODO: Put your lab5 code here */
 
   tree::Exp *toExp(tree::Exp *fp) override {
+    assert(offset < 0);
     return new tree::MemExp(
         new tree::BinopExp(tree::PLUS_OP, (fp),
                            new tree::ConstExp((this->offset))));

@@ -24,16 +24,8 @@ tree::Stm *procEntryExit1(frame::Frame *frame_, tree::Stm *stm) {
 }
 
 assem::InstrList *procEntryExit2(assem::InstrList *body) {
-  // active reg: RSP, RAX
-  static auto returnSink = new temp::TempList();
-
-  if (returnSink->GetList().empty()) {
-    returnSink = frame::X64Frame::regManager.ReturnSink();
-  }
-
-  auto sinkInstr = new assem::OperInstr("", nullptr, returnSink, nullptr);
+  auto sinkInstr = new assem::OperInstr("", nullptr, frame::X64Frame::regManager.ReturnSink(), nullptr);
   body->Append(sinkInstr);
-
   return body;
 }
 
@@ -278,6 +270,7 @@ temp::Temp *X64RegManager::StackPointer() {
 
 int X64RegManager::WordSize() { return 8; }
 
+// common register
 temp::TempList *X64RegManager::Registers() {
   auto ret = new temp::TempList();
   ret->Append(RAX());
@@ -338,6 +331,20 @@ temp::TempList *X64RegManager::ReturnSink() {
   auto ret = new temp::TempList();
   ret->Append(RAX());
   ret->Append(RSP());
+
+  return ret;
+}
+
+bool X64RegManager::IsMachineRegister(temp::Temp *const &pTemp) {
+  auto commons = Registers()->GetList();
+  auto ret = false;
+  for(auto &common: commons) {
+    if(common == pTemp) {
+      ret = true;
+      break;
+    }
+  }
+
   return ret;
 }
 
